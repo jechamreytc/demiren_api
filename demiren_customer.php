@@ -185,13 +185,14 @@ class Demiren_customer
         return $stmt->rowCount() > 0 ? 1 : 0;
     }
 
-    function customerBookingNoAccount($json) {
+    function customerBookingNoAccount($json)
+    {
         include "connection.php";
         $json = json_decode($json, true);
-    
+
         try {
             $conn->beginTransaction();
-    
+
             // Insert walk-in customer
             $stmt = $conn->prepare("
                 INSERT INTO tbl_customers_walk_in 
@@ -205,7 +206,7 @@ class Demiren_customer
             $stmt->bindParam(":customers_walk_in_phone_number", $json["customers_walk_in_phone_number"]);
             $stmt->execute();
             $walkInCustomerId = $conn->lastInsertId();
-    
+
             // Insert booking
             $stmt = $conn->prepare("
                 INSERT INTO tbl_booking 
@@ -219,11 +220,11 @@ class Demiren_customer
             $stmt->bindParam(":booking_checkout_dateandtime", $json["booking_checkout_dateandtime"]);
             $stmt->execute();
             $bookingId = $conn->lastInsertId();
-    
+
             // Insert into tbl_booking_room based on room quantity
             $roomtype_id = $json["roomtype_id"];
             $room_count = intval($json["room_count"]);
-    
+
             for ($i = 0; $i < $room_count; $i++) {
                 $stmt = $conn->prepare("
                     INSERT INTO tbl_booking_room 
@@ -235,26 +236,26 @@ class Demiren_customer
                 $stmt->bindParam(":roomtype_id", $roomtype_id);
                 $stmt->execute();
             }
-    
+
             $conn->commit();
             return 1;
-    
         } catch (PDOException $e) {
             $conn->rollBack();
             return 0;
         }
     }
 
-    function customerBookingWithAccount($json) {
+    function customerBookingWithAccount($json)
+    {
         include "connection.php";
         $json = json_decode($json, true);
-    
+
         try {
             $conn->beginTransaction();
-    
+
             // Use existing customer ID
             $existingCustomerId = $json["customers_id"];
-    
+
             // Insert booking
             $stmt = $conn->prepare("
                 INSERT INTO tbl_booking 
@@ -268,11 +269,11 @@ class Demiren_customer
             $stmt->bindParam(":booking_checkout_dateandtime", $json["booking_checkout_dateandtime"]);
             $stmt->execute();
             $bookingId = $conn->lastInsertId();
-    
+
             // Insert rooms for the booking
             $roomtype_id = $json["roomtype_id"];
             $room_count = intval($json["room_count"]);
-    
+
             for ($i = 0; $i < $room_count; $i++) {
                 $stmt = $conn->prepare("
                     INSERT INTO tbl_booking_room 
@@ -284,24 +285,22 @@ class Demiren_customer
                 $stmt->bindParam(":roomtype_id", $roomtype_id);
                 $stmt->execute();
             }
-    
+
             $conn->commit();
             return 1;
-    
         } catch (PDOException $e) {
             $conn->rollBack();
             return $e->getMessage();
         }
     }
-    
-    
 
-    function customerViewBookings($json){
+    function customerViewBookings($json)
+    {
         include "connection.php";
         $json = json_decode($json, true);
-    
+
         $bookingCustomerId = $json['booking_customer_id'] ?? 0;
-    
+
         $sql = "SELECT 
                     a.roomtype_name,
                     e.roomnumber_id,
@@ -318,20 +317,17 @@ class Demiren_customer
                 INNER JOIN tbl_booking_status AS d ON d.booking_status_id = c.booking_status_id
                 INNER JOIN tbl_rooms AS e ON e.roomtype_id = a.roomtype_id
                 WHERE c.customers_id = :bookingCustomerId OR c.customers_walk_in_id = :bookingCustomerId";
-    
+
         $stmt = $conn->prepare($sql);
         $stmt->bindParam(':bookingCustomerId', $bookingCustomerId);
         $stmt->execute();
         $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
+
         return json_encode($result);
     }
 
-    function customerViewPaymentsWithAccount($json){
-        
-    }
-
-    function customerFeedBack($json){
+    function customerFeedBack($json)
+    {
         include "connection.php";
         $json = json_decode($json, true);
         $sql = "INSERT INTO tbl_customersreviews (customers_id, customersreviews, customersreviews_hospitality_rate,	customersreviews_behavior_rate, customersreviews_facilities_rate, customersreviews_cleanliness_rate, customersreviews_foods_rate ) VALUES (:customers_id, :customersreviews, :customersreviews_hospitality_rate, :customersreviews_behavior_rate, :customersreviews_facilities_rate, :customersreviews_cleanliness_rate, :customersreviews_foods_rate)";
@@ -347,7 +343,8 @@ class Demiren_customer
         return $stmt->rowCount() > 0 ? 1 : 0;
     }
 
-    function customerCancelBooking($json){
+    function customerCancelBooking($json)
+    {
         include "connection.php";
         $json = json_decode($json, true);
         $sql = "UPDATE tbl_booking SET booking_status_id = 3 WHERE booking_id = :booking_id";
@@ -361,12 +358,12 @@ class Demiren_customer
     {
         include "send_email.php";
         $json = json_decode($json, true);
-    
+
         // Extract or default values
         $emailTo = $json['emailToSent'] ?? null;
         $emailSubject = $json['emailSubject'] ?? "Demiren Hotel & Restaurant";
         $confirmationNumber = $json['confirmationNumber'] ?? "N/A";
-    
+
         // Construct designed email body
         $emailBody = '
 <html>
@@ -405,15 +402,16 @@ class Demiren_customer
 </body>
 </html>';
 
-    
+
         $sendEmail = new SendEmail();
         return $sendEmail->sendEmail($emailTo, $emailSubject, $emailBody);
     }
 
-    function getBookingCharges($json) {
+    function getBookingCharges($json)
+    {
         include "connection.php";
         $json = json_decode($json, true);
-    
+
         try {
             $stmt = $conn->prepare("
                 SELECT 
@@ -435,24 +433,57 @@ class Demiren_customer
                 LEFT JOIN tbl_employee AS emp ON emp.employee_id = inv.employee_id
                 WHERE bc.booking_room_id = :booking_room_id
             ");
-    
+
             $stmt->bindParam(":booking_room_id", $json["booking_room_id"]);
             $stmt->execute();
-    
+
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
             return json_encode($result);
-    
         } catch (PDOException $e) {
             return "Error: " . $e->getMessage();
         }
     }
-    
-    
-    
-    
-    
-    
-    
+
+    function customerDisplayRooms($json)
+    {
+        include "connection.php";
+        $json = json_decode($json, true);
+
+        $sql = "SELECT 
+                a.room_amenities_master_name, 
+                c.roomtype_name, 
+                c.roomtype_description, 
+                c.roomtype_price, 
+                b.roomfloor, 
+                b.room_capacity, 
+                b.room_beds, 
+                b.room_sizes, 
+                d.status_name
+                FROM tbl_room_amenities AS e
+                INNER JOIN tbl_room_amenities_master AS a ON a.room_amenities_master_id = e.amenities_room_amenities_master_id
+                INNER JOIN tbl_rooms AS b ON b.roomnumber_id = e.amenities_roomnumber_id
+                INNER JOIN tbl_roomtype AS c ON c.roomtype_id = b.roomtype_id
+                INNER JOIN tbl_status_types AS d ON d.status_id = b.room_status_id
+                WHERE e.amenities_roomnumber_id = :amenities_roomnumber_id";
+
+        $stmt = $conn->prepare($sql);
+        $stmt->bindParam(":amenities_roomnumber_id", $json["amenities_roomnumber_id"]);
+        $stmt->execute();
+        $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return json_encode($result);
+    }
+
+    function addRoomsAmenities($json){
+        include "connection.php";
+        $json = json_decode($json, true);
+        $sql = "INSERT INTO tbl_room_amenities (amenities_roomnumber_id, amenities_room_amenities_master_id) VALUES (:amenities_roomnumber_id, :amenities_room_amenities_master_id)";
+        $stmt = $conn->prepare($sql);
+        $stmt->bindParam(":amenities_roomnumber_id", $json["amenities_roomnumber_id"]);
+        $stmt->bindParam(":amenities_room_amenities_master_id", $json["amenities_room_amenities_master_id"]);
+        $stmt->execute();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return json_encode($result);
+    }
 }
 
 
@@ -499,6 +530,12 @@ switch ($operation) {
         break;
     case "getBookingCharges":
         echo $demiren_customer->getBookingCharges($json);
+        break;
+    case "customerDisplayRooms":
+        echo $demiren_customer->customerDisplayRooms($json);
+        break;
+    case "addRoomsAmenities":
+        echo $demiren_customer->addRoomsAmenities($json);
         break;
     default:
         echo json_encode(["error" => "Invalid operation"]);
