@@ -574,7 +574,7 @@ class Demiren_customer
         }
     }
 
-    function customerCurrentBookings($json)
+    function customerCurrentBookingsWithAccount($json)
     {
         include "connection.php";
         $json = json_decode($json, true);
@@ -596,12 +596,42 @@ class Demiren_customer
             INNER JOIN tbl_booking AS c ON c.booking_id = b.booking_id
             INNER JOIN tbl_booking_status AS d ON d.booking_status_id = c.booking_status_id
             INNER JOIN tbl_rooms AS e ON e.roomtype_id = a.roomtype_id
-            WHERE 
-                (c.customers_id = :bookingCustomerId OR c.customers_walk_in_id = :bookingCustomerId)
-                AND c.booking_status_id IN (1, 2)";
+            WHERE c.customers_id = :bookingCustomerId AND c.booking_status_id IN (1, 2) LIMIT 1";
 
         $stmt = $conn->prepare($sql);
         $stmt->bindParam(':bookingCustomerId', $bookingCustomerId);
+        $stmt->execute();
+        $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return json_encode($result);
+    }
+
+    function customerCurrentBookingsWithoutAccount($json)
+    {
+        include "connection.php";
+        $json = json_decode($json, true);
+
+        $bookingReferenceNumber = $json['booking_reference_number'] ?? 0;
+
+        $sql = "SELECT 
+                a.roomtype_name,
+                b.roomnumber_id,
+                c.booking_downpayment,
+                e.room_beds,
+                e.room_sizes,
+                c.booking_created_at,
+                d.booking_status_name,
+                c.booking_checkin_dateandtime,
+                c.booking_checkout_dateandtime
+            FROM tbl_roomtype AS a
+            INNER JOIN tbl_booking_room AS b ON b.roomtype_id = a.roomtype_id
+            INNER JOIN tbl_booking AS c ON c.booking_id = b.booking_id
+            INNER JOIN tbl_booking_status AS d ON d.booking_status_id = c.booking_status_id
+            INNER JOIN tbl_rooms AS e ON e.roomtype_id = a.roomtype_id
+            WHERE c.booking_reference_number = :bookingReferenceNumber AND c.booking_status_id IN (1, 2) LIMIT 1";
+
+        $stmt = $conn->prepare($sql);
+        $stmt->bindParam(':bookingReferenceNumber', $bookingReferenceNumber);
         $stmt->execute();
         $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -701,8 +731,11 @@ switch ($operation) {
     case "customerRegistration":
         echo $demiren_customer->customerRegistration($json);
         break;
-    case "customerCurrentBookings":
-        echo $demiren_customer->customerCurrentBookings($json);
+    case "customerCurrentBookingsWithAccount":
+        echo $demiren_customer->customerCurrentBookingsWithAccount($json);
+        break;
+    case "customerCurrentBookingsWithoutAccount":
+        echo $demiren_customer->customerCurrentBookingsWithoutAccount($json);
         break;
     case "getCurrentBillings":
         echo $demiren_customer->getCurrentBillings($json);
