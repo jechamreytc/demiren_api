@@ -419,25 +419,25 @@ class Demiren_customer
 
         try {
             $stmt = $conn->prepare("
-                SELECT 
-                    CONCAT(cust.customers_fname, ' ', cust.customers_lname) AS customers_fullname,
-                    MAX(inv.invoice_date) AS invoice_date,
-                    CONCAT(emp.employee_fname, ' ', emp.employee_lname) AS employee_fullname,
-                    SUM(CASE WHEN cat.charges_category_id = 1 THEN bc.booking_charges_price * bc.booking_charges_quantity ELSE 0 END) AS room_charges,
-                    SUM(CASE WHEN cat.charges_category_id = 2 THEN bc.booking_charges_price * bc.booking_charges_quantity ELSE 0 END) AS food_charges,
-                    SUM(CASE WHEN cat.charges_category_id = 3 THEN bc.booking_charges_price * bc.booking_charges_quantity ELSE 0 END) AS extra_charges,
-                    SUM(bc.booking_charges_price * bc.booking_charges_quantity) AS total_charges
-                FROM tbl_booking_charges AS bc
-                INNER JOIN tbl_charges_master AS cm ON cm.charges_master_id = bc.charges_master_id
-                INNER JOIN tbl_charges_category AS cat ON cat.charges_category_id = cm.charges_category_id
-                INNER JOIN tbl_booking_room AS br ON br.booking_room_id = bc.booking_room_id
-                INNER JOIN tbl_booking AS b ON b.booking_id = br.booking_id
-                INNER JOIN tbl_customers AS cust ON cust.customers_id = b.customers_id
-                LEFT JOIN tbl_billing AS bill ON bill.booking_id = b.booking_id
-                LEFT JOIN tbl_invoice AS inv ON inv.billing_id = bill.billing_id
-                LEFT JOIN tbl_employee AS emp ON emp.employee_id = inv.employee_id
-                WHERE bc.booking_room_id = :booking_room_id
-            ");
+            SELECT 
+                CONCAT(e.customers_fname, ' ', e.customers_lname) AS customers_fullname,
+                MAX(g.invoice_date) AS invoice_date,
+                CONCAT(h.employee_fname, ' ', h.employee_lname) AS employee_fullname,
+                SUM(CASE WHEN c.charges_category_id = 1 THEN a.booking_charges_price * a.booking_charges_quantity ELSE 0 END) AS room_charges,
+                SUM(CASE WHEN c.charges_category_id = 2 THEN a.booking_charges_price * a.booking_charges_quantity ELSE 0 END) AS food_charges,
+                SUM(CASE WHEN c.charges_category_id = 3 THEN a.booking_charges_price * a.booking_charges_quantity ELSE 0 END) AS extra_charges,
+                SUM(a.booking_charges_price * a.booking_charges_quantity) AS total_charges
+            FROM tbl_booking_charges AS a
+            INNER JOIN tbl_charges_master AS b ON b.charges_master_id = a.charges_master_id
+            INNER JOIN tbl_charges_category AS c ON c.charges_category_id = b.charges_category_id
+            INNER JOIN tbl_booking_room AS d ON d.booking_room_id = a.booking_room_id
+            INNER JOIN tbl_booking AS f ON f.booking_id = d.booking_id
+            INNER JOIN tbl_customers AS e ON e.customers_id = f.customers_id
+            LEFT JOIN tbl_billing AS i ON i.booking_id = f.booking_id
+            LEFT JOIN tbl_invoice AS g ON g.billing_id = i.billing_id
+            LEFT JOIN tbl_employee AS h ON h.employee_id = g.employee_id
+            WHERE a.booking_room_id = :booking_room_id
+        ");
 
             $stmt->bindParam(":booking_room_id", $json["booking_room_id"]);
             $stmt->execute();
@@ -448,6 +448,7 @@ class Demiren_customer
             return "Error: " . $e->getMessage();
         }
     }
+
 
     function customerDisplayRooms($json)
     {
@@ -582,7 +583,7 @@ class Demiren_customer
 
         $sql = "SELECT 
                 a.roomtype_name,
-                e.roomnumber_id,
+                b.roomnumber_id,
                 c.booking_downpayment,
                 e.room_beds,
                 e.room_sizes,
@@ -608,12 +609,12 @@ class Demiren_customer
     }
 
     function getCurrentBillings($json)
-{
-    include "connection.php";
-    $json = json_decode($json, true);
+    {
+        include "connection.php";
+        $json = json_decode($json, true);
 
-    try {
-        $stmt = $conn->prepare("
+        try {
+            $stmt = $conn->prepare("
             SELECT 
                 CONCAT(a.customers_fname, ' ', a.customers_lname) AS customers_fullname,
                 MAX(f.invoice_date) AS invoice_date,
@@ -635,16 +636,15 @@ class Demiren_customer
               AND j.booking_status_id IN (1, 2)
         ");
 
-        $stmt->bindParam(":booking_room_id", $json["booking_room_id"]);
-        $stmt->execute();
+            $stmt->bindParam(":booking_room_id", $json["booking_room_id"]);
+            $stmt->execute();
 
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        return json_encode($result);
-    } catch (PDOException $e) {
-        return "Error: " . $e->getMessage();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            return json_encode($result);
+        } catch (PDOException $e) {
+            return "Error: " . $e->getMessage();
+        }
     }
-}
-
 }
 
 
