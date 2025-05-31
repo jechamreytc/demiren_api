@@ -675,6 +675,44 @@ class Demiren_customer
             return "Error: " . $e->getMessage();
         }
     }
+
+    function customerRequestAmenities($json){
+        include "connection.php";
+        $json = json_decode($json, true);
+    }
+
+    function roomsAvailability($json)
+    {
+        // {"checkin": "2025-05-01 14:00:00","checkout": "2025-05-10 12:00:00"}
+        include "connection.php";
+        $json = json_decode($json, true);
+
+        $stmt = $conn->prepare("
+            SELECT 
+                a.roomnumber_id, 
+                a.roomfloor, 
+                a.room_capacity, 
+                a.room_beds, 
+                a.room_sizes, 
+                b.status_name
+            FROM tbl_rooms AS a
+            INNER JOIN tbl_status_types AS b ON b.status_id = a.room_status_id
+            LEFT JOIN tbl_booking_room AS c ON c.roomnumber_id = a.roomnumber_id
+            LEFT JOIN tbl_booking AS d ON d.booking_id = c.booking_id
+                AND d.booking_status_id IN (1, 2)
+                AND (:checkin < d.booking_checkout_dateandtime AND :checkout > d.booking_checkin_dateandtime)
+            WHERE d.booking_id IS NULL
+        ");
+
+        $stmt->bindParam(":checkin", $json["checkin"]);
+        $stmt->bindParam(":checkout", $json["checkout"]);
+        $stmt->execute();
+
+        $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return json_encode($result);
+    }
+
+
 }
 
 
@@ -739,6 +777,9 @@ switch ($operation) {
         break;
     case "getCurrentBillings":
         echo $demiren_customer->getCurrentBillings($json);
+        break;
+    case "roomsAvailability":
+        echo $demiren_customer->roomsAvailability($json);
         break;
     default:
         echo json_encode(["error" => "Invalid operation"]);
